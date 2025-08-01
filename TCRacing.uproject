@@ -150,6 +150,10 @@
 			"Enabled": true
 		},
 		{
+			"Name": "Black_Eye",
+			"Enabled": true
+		},
+		{
 			"Name": "Cinematographer",
 			"Enabled": true,
 			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/223cd74a5e0a42eca98e585f25b0b729"
