@@ -1,0 +1,36 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.07",
+	"FriendlyName": "Cinematographer PRO",
+	"Description": "A Photorealistic Camera System",
+	"Category": "Cameras",
+	"CreatedBy": "lumines_labs",
+	"CreatedByURL": "https://lumines-labs.com",
+	"DocsURL": "https://lumines-labs.com/Cinematographer-Documentation.html",
+	"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/223cd74a5e0a42eca98e585f25b0b729",
+	"SupportURL": "https://cinematographer.userecho.com",
+	"EngineVersion": "5.5.0",
+	"CanContainContent": true,
+	"Installed": true,
+	"Modules": [
+		{
+			"Name": "Cinematographer",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"PlatformAllowList": [
+				"Win64",
+				"Mac"
+			]
+		},
+		{
+			"Name": "CinematographerEditor",
+			"Type": "Editor",
+			"LoadingPhase": "PostEngineInit",
+			"PlatformAllowList": [
+				"Win64",
+				"Mac"
+			]
+		}
+	]
+}
