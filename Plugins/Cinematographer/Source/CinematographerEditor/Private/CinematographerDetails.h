@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "Editor/PropertyEditor/Public/IDetailCustomization.h"
+#include "IDetailCustomization.h"
 
 class FReply;
 class URealCameraLens;
@@ -51,6 +51,8 @@ private:
 
 	void LensChange(const FAssetData& AssetData);
 	void BodyChange(const FAssetData& AssetData);
+
+	void FilmChange();
 
 	bool bIsPrimeLens;
 

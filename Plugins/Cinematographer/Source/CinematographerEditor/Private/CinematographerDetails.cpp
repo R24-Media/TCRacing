@@ -2,13 +2,13 @@
 
 #include "CinematographerDetails.h"
 
-#include "Editor/PropertyEditor/Public/DetailLayoutBuilder.h"
-#include "Editor/PropertyEditor/Public/DetailCategoryBuilder.h"
+#include "DetailLayoutBuilder.h"
+#include "DetailCategoryBuilder.h"
 #include "IDetailGroup.h"
 #include "IDetailChildrenBuilder.h"
-#include "Editor/PropertyEditor/Public/DetailLayoutBuilder.h"
-#include "Editor/PropertyEditor/Public/DetailWidgetRow.h"
-#include "Editor/PropertyEditor/Public/PropertyHandle.h"
+#include "DetailLayoutBuilder.h"
+#include "DetailWidgetRow.h"
+#include "PropertyHandle.h"
 
 #include "Cinematographer/Public/RealCameraComponent.h"
 #include "Cinematographer/Public/RealCameraActor.h"
@@ -87,7 +87,12 @@ void FCinematographerDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBuild
 	CategoryPR.SetCategoryVisibility(b_LegacySettings);
 	IDetailCategoryBuilder& CategoryNW = DetailBuilder.EditCategory("Networking", LOCTEXT("CatName", "Networking"), ECategoryPriority::Default);
 	CategoryNW.SetCategoryVisibility(b_LegacySettings);
+	IDetailCategoryBuilder& CategoryNG = DetailBuilder.EditCategory("Navigation", LOCTEXT("CatName", "Navigation"), ECategoryPriority::Default);
+	CategoryNG.SetCategoryVisibility(b_LegacySettings);
+	IDetailCategoryBuilder& CategoryLI = DetailBuilder.EditCategory("LevelInstance", LOCTEXT("CatName", "LevelInstance"), ECategoryPriority::Default);
+	CategoryLI.SetCategoryVisibility(b_LegacySettings);
 
+	
 	IDetailCategoryBuilder & CategoryPostProcessMaterials = DetailBuilder.EditCategory("Post Process Materials", LOCTEXT("CatName", "Post Process Materials"), ECategoryPriority::Default);
 	CategoryPostProcessMaterials.SetCategoryVisibility(b_LegacySettings);
 
@@ -112,6 +117,8 @@ void FCinematographerDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBuild
 	TSharedPtr<IPropertyHandle> CameraBodyProperty = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(ARealCameraActor, ActiveRealCameraBody));
 	TSharedPtr<IPropertyHandle> CameraLensProperty = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(ARealCameraActor, ActiveRealCameraLens));
 
+	TSharedPtr<IPropertyHandle> CameraFilmProperty = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(ARealCameraActor, FilmMaterial));
+	
 	//Features
 	TSharedPtr<IPropertyHandle> ExposureCompensationProperty = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(ARealCameraActor, bExposureCompensationEnabled));
 	TSharedPtr<IPropertyHandle> DynamicRangeProperty = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(ARealCameraActor, bSimulatedDynamicRangeEnabled));
@@ -128,8 +135,13 @@ void FCinematographerDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBuild
 	CategoryCameraSetup.AddProperty(CameraBodyProperty);
 	CategoryCameraSetup.AddProperty(CameraLensProperty);
 
+	IDetailCategoryBuilder& CategoryVintageFilm = DetailBuilder.EditCategory("Vintage Film", LOCTEXT("Vintage Film Name", "Vintage Film"), ECategoryPriority::Important);
+	CategoryVintageFilm.InitiallyCollapsed(true);
+	CategoryVintageFilm.AddProperty(CameraFilmProperty);
+	
 	CameraBodyProperty.ToSharedRef()->SetOnPropertyValueChanged(FSimpleDelegate::CreateSP(this, &FCinematographerDetails::BodyUpdate));
 	CameraLensProperty.ToSharedRef()->SetOnPropertyValueChanged(FSimpleDelegate::CreateSP(this, &FCinematographerDetails::LensUpdate));
+	CameraFilmProperty.ToSharedRef()->SetOnPropertyValueChanged(FSimpleDelegate::CreateSP(this, &FCinematographerDetails::FilmChange));
 
 	IDetailCategoryBuilder& CategoryFocus = DetailBuilder.EditCategory(TEXT("Focus"), LOCTEXT("Focus", "Focus"), ECategoryPriority::Important);
 	CategoryFocus.InitiallyCollapsed(true);
@@ -510,6 +522,16 @@ void FCinematographerDetails::BodyChange(const FAssetData& AssetData)
 		RCA->SetActiveBody();
 	}
 }
+void FCinematographerDetails::FilmChange()
+{
+	for (TWeakObjectPtr<UObject> Object : ObjectsToEdit)
+	{
+		if (!Object.IsValid()) continue;
+		ARealCameraActor* RCA = Cast <ARealCameraActor>(Object.Get());
+		if (!RCA) continue;
+		RCA->UpdateFilm();
+	}
+}
 
 EVisibility FCinematographerDetails::bIsMovieMode() const
 {
@@ -529,7 +551,6 @@ FReply FCinematographerDetails::EditObjects()
 	for (TWeakObjectPtr<UObject> Object : ObjectsToEdit)
 	{ 
 		if (!Object.IsValid()) continue;
-		UE_LOG(LogTemp, Warning, TEXT("EditObjects!"));
 		ARealCameraActor* RCA = Cast <ARealCameraActor>(Object.Get());
 		if (!RCA) continue;
 	}

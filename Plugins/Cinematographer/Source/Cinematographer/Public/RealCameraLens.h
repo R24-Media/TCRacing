@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "LensFile.h"
 #include "CineCameraComponent.h"
 #include "RealCameraLens.generated.h"
 
@@ -46,7 +47,7 @@ public:
 		uint8 NumberOfBlades = 11;
 
 	//An arbitrary value from 0.0 - 1.0. Use positiv values for barrel distortion and negativ values for pincushion distortion. Never use 0.0 since every lens has flaws!
-	UPROPERTY(Interp, EditAnywhere, BlueprintReadWrite, Category = "Lens Characteristics", meta = (DisplayName = "Barrel/Pincushion Distortion"))
+	UPROPERTY(Interp, EditAnywhere, BlueprintReadWrite, Category = "Lens Characteristics", meta = (DisplayName = "Barrel/Pincushion Distortion", EditCondition = "!b_useLensFile"))
 		float BarrelDistortion = 0.15f;
 
 	//This value describes how UN-sharp the lens is. An arbitrary value from 0.0 - 1.0. Never use 0.0 since every lens has flaws!
@@ -71,4 +72,11 @@ public:
 
 	UPROPERTY()
 		FCameraLensSettings RealLensSettings;
+
+	//Enable if you want to use a calibrated Unreal Lens File
+	UPROPERTY(Interp, EditAnywhere, BlueprintReadWrite, Category = "Calibrated Lens File", meta = (DisplayName = "Use Calibrated Lens File?"))
+		bool b_useLensFile = false;
+
+	UPROPERTY(Interp, EditAnywhere, BlueprintReadWrite, Category = "Calibrated Lens File", meta = (DisplayName = "Calibrated Lens File", ForceUnits = mm, EditCondition = "b_useLensFile"))
+		class ULensFile* RealLensFile;
 };

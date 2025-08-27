@@ -3,8 +3,8 @@
 #include "CinematographerEditor.h"
 #include "Cinematographer/Public/RealCameraActor.h"
 #include "Cinematographer/Public/RealCameraComponent.h"
-#include "Editor/PropertyEditor/Public/PropertyEditorModule.h"
-#include "Editor/PropertyEditor/Public/PropertyEditorDelegates.h"
+#include "PropertyEditorModule.h"
+#include "PropertyEditorDelegates.h"
 #include "CinematographerDetails.h"
 
 //Icon

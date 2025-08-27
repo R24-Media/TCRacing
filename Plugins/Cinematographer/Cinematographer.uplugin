@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "1.07",
+	"VersionName": "1.2",
 	"FriendlyName": "Cinematographer PRO",
 	"Description": "A Photorealistic Camera System",
 	"Category": "Cameras",
@@ -10,7 +10,7 @@
 	"DocsURL": "https://lumines-labs.com/Cinematographer-Documentation.html",
 	"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/223cd74a5e0a42eca98e585f25b0b729",
 	"SupportURL": "https://cinematographer.userecho.com",
-	"EngineVersion": "5.5.0",
+	"EngineVersion": "5.6.0",
 	"CanContainContent": true,
 	"Installed": true,
 	"Modules": [
@@ -31,6 +31,16 @@
 				"Win64",
 				"Mac"
 			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "CameraCalibration",
+			"Enabled": true
+		},
+		{
+			"Name": "LensComponent",
+			"Enabled": true
 		}
 	]
 }
