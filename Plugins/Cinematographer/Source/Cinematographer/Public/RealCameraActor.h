@@ -1,4 +1,4 @@
-// Copyright 2022 lumines_labs. All Rights Reserved.
+// Copyright 2025 lumines_labs. All Rights Reserved.
 
 #pragma once
 
@@ -9,6 +9,9 @@
 #include "Components/SceneCaptureComponent2D.h"
 #include "Materials/Material.h"
 #include "Engine/TextureRenderTarget2D.h"
+
+#include "LensFile.h"
+#include "LensComponent.h"
 
 #include "RealCameraBody.h"
 #include "RealCameraLens.h"
@@ -34,15 +37,18 @@ struct FCameraShutterSettings
 
 	//Photography for still images, Movie for film and Game for interactive media.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Photography", meta = (DisplayName = "Shutter Mode"))
-	ERealCameraMode CameraMode;
+	ERealCameraMode CameraMode = ERealCameraMode::Photography;
 
 	//Fractions of a second in which light can hit the sensor. So 60 is 1/60 of a second. Low shutter speed -> higher exposure and more motion blur. High shutter speed -> lower exposure and less motion blur.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ShutterSpeed", meta = (DisplayName = "Shutter Speed"))
 	int32 CurrentShutterSpeed = 125;
 
 	//Motion blur will emulate the look appropriate to the Target FPS independent of the actual frame rate. Give your output a filmic and cinematic look and match the look with already existing content. This setting does not change or overwrite your export frame rate!
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TargetFPS")
-	float TargetFPS = 60;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TargetFPS",meta=(EditCondition="bTragetFPSVisible"))
+	float TargetFPS = 24;
+
+	UPROPERTY()
+	bool bTragetFPSVisible = true;
 
 	//Motion blur will emulate the look appropriate to the Simulated FPS independent of the actual frame rate. This allows for a filmic and cinematic look while maintaining high frame rate in interactive media. This setting does not modify your frame rate!
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimulatedFPS")
@@ -140,7 +146,10 @@ public:
 	void UpdateDoFBlades();
 	void UpdateISORange();
 	void UpdateSensorSize();
+	void UpdateLensFile();
 
+	void UpdateFilm();
+	void UpdateLUT();
 	
 
 	UPROPERTY()
@@ -259,7 +268,7 @@ public:
 	bool bIsPrimeLens = false;
 
 	//Focal length of your current lens. Greyed out, if the lens is a prime lens and has only one focal length.
-	UPROPERTY(Interp, EditAnywhere, BlueprintReadWrite, Category = "Configure Shot", meta = (DisplayName = "Focal Length", ForceUnits = mm))
+	UPROPERTY(Interp, EditAnywhere, BlueprintReadWrite, Category = "Configure Shot", meta = (DisplayName = "Focal Length", ClampMin = "0.001", ForceUnits = mm))
 	float ActiveFocalLength = 48.0f;
 
 	UFUNCTION(CallInEditor)
@@ -288,7 +297,7 @@ public:
 	void SetCurrentNDFilter(float value);
 
 	//Allows cropping the image to a different aspect ratio than the sensors original one.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configure Shot", meta = (DisplayName = "Custom Aspect Ratio enabled"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configure Shot", meta = (DisplayName = "Custom Aspect Ratio enabled", ScriptName = "boolCustomAspectRatio"))
 	bool bCustomAspectRatio = false;
 
 	//For 16:9 -> X=16 Y=9.
@@ -352,6 +361,9 @@ public:
 	UPROPERTY()
 	bool UseEditorTick = true;
 
+	UPROPERTY()
+	bool bCurrentLensFileInUse = false;
+
 	//RealCamera Function Toggles
 
 	//Enables the contribution of Shutter Angle and ND Filter to the exposure of the shot.
@@ -366,7 +378,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Real Camera Features", meta = (DisplayName = "Motion Blur enabled"))
 	bool bMotionBlurEnabled = true;
 
-	//Enables Barrel/Pincushion Distortion.
+	//Enables Barrel/Pincushion Distortion. Greyed out if the used RealCamera Lens uses a LensFile. Post process distorion is then disabled and the more precise distortion of the LensFile is used.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Real Camera Features", meta = (DisplayName = "Barrel/Pincushion Distortion enabled"))
 	bool bBarrelDistortionEnabled = true;
 
@@ -390,8 +402,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Real Camera Features", meta = (DisplayName = "Chromatic Aberration enabled"))
 	bool bChromaticAberrationEnabled = true;
 
-	//Enables Digital Film Grain.Even disabled ISO will still contribute to the exposure.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Real Camera Features", meta = (DisplayName = "ISO Grain enabled"))
+	//Enables Digital Film Grain.Even disabled Digital ISO Grain will still contribute to the exposure. Can not be enabled while Vintage Film Stock is in use.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Real Camera Features", meta = (DisplayName = "Digital ISO Grain enabled"))
 	bool bISOGrainEnabled = true;
 
 private:
@@ -441,9 +453,23 @@ private:
 	UPROPERTY()
 	uint32 RenderTargetTextureSizeY = RenderTargetSize;
 
+	UPROPERTY()
+	class ULensFile* ActiveRealLensFile;
+
+	UPROPERTY(VisibleDefaultsOnly, Category = "Item Config")
+	class ULensComponent* RealLensComponent;
+
 	public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configure Shot")
 	FCameraLookatTrackingSettings RealCameraLookatTrackingSettings;
 
+
 	void UpdateLookatTrackingSettings();
+
+	//Add a Film Stock preset from our new Plugin "Vintage Film - photorealistic Film simulation filter with prestine Film Grain for 8mm, Super 8, 16mm, Super 16, 35mm, Super 35, Techniscope, 65mm, 75mmm, Kinetoscope and Cinerama
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Vintage Film", meta = (DisplayName = "Film Stock"))
+	UMaterialInstance* FilmMaterial;
+
+	UPROPERTY()
+	UMaterialInstanceDynamic* FilmDynMaterial;
 };

@@ -1,4 +1,4 @@
-// Copyright 2022 lumines_labs. All Rights Reserved.
+// Copyright 2025 lumines_labs. All Rights Reserved.
 
 #include "RealCameraActor.h"
 #include "RealCameraComponent.h"
@@ -32,6 +32,9 @@ ARealCameraActor::ARealCameraActor(const FObjectInitializer& ObjectInitializer) 
 	SetActorTickEnabled(true);
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = true;
+
+	RealLensComponent = CreateDefaultSubobject<ULensComponent>(FName("RealLensComponent"));
+	RealLensComponent = FindComponentByClass<ULensComponent>();
 }
 
 
@@ -257,6 +260,20 @@ void ARealCameraActor::AutoExposureInit()
 	EVApertureRangeMinMax.X = EVApertureRangeMin;
 	EVApertureRange = EVApertureRangeMinMax.Y - EVApertureRangeMinMax.X;
 
+	if (FilmMaterial && FilmDynMaterial)
+	{
+		AutoExposureMode = EAutoExposureMode::ShutterPriority;
+		RealCameraShutterSettings.CameraMode = ERealCameraMode::Movie;
+		
+		if (FilmMaterial && FilmDynMaterial->K2_GetScalarParameterValue(FName("Framerate"))) {
+			RealCameraShutterSettings.TargetFPS = FilmDynMaterial->K2_GetScalarParameterValue(FName("Framerate"));
+			RealCameraShutterSettings.bTragetFPSVisible = false;
+		}
+	}
+	else { RealCameraShutterSettings.bTragetFPSVisible = true;
+		RealCameraShutterSettings.TargetFPS = 24;
+	}
+
 	if (AutoExposureMode == EAutoExposureMode::FullAutomatic || AutoExposureMode == EAutoExposureMode::AperturePriority) 
 	{
 		RealCameraShutterSettings.CameraMode = ERealCameraMode::Photography;
@@ -295,8 +312,6 @@ void ARealCameraActor::AutoExposureInit()
 		EVApertureBasePosition = EVApertureCompensationPosition = CurrentAperturePosition;
 	}
 
-
-
 	EVShutterRange = Shutterspeeds.Num() - 1;
 
 	EVShutterRangeMinMax.X = 0;
@@ -333,7 +348,7 @@ void ARealCameraActor::AutoExposureUpdate()
 	uint32 R = 0;
 	uint32 G = 0;
 	uint32 B = 0;
-	SurfData.Num();
+	//SurfData.Num();
 	float LuminanceCollector = 0.0f;
 
 	uint32 RenderTargetPixels = 0;
@@ -530,6 +545,42 @@ void ARealCameraActor::StopUp(int& ISOPosition, int& EVShutterPosition, int& Ape
 			ISODecrease();
 		}
 	}
+	if ((AutoExposureMode == EAutoExposureMode::FullAutomatic && EVShutterRange > 0 && EVApertureRange > 0 && EVISORange == 0))
+	{
+		if (UKismetMathLibrary::SafeDivide(1.0f, (EVShutterRange)) * EVShutterPosition >= UKismetMathLibrary::SafeDivide(1.0f, (EVApertureRange)) * AperturePosition)
+		{
+			if (EVShutterPosition > 0)
+			{
+				ShutterDecrease();
+			}
+		}
+		else
+		{
+			if (AperturePosition > 0)
+			{
+				ApertureDecrease();
+			}
+		}
+	}
+
+	if ((AutoExposureMode == EAutoExposureMode::ShutterPriority && EVApertureRange > 0 && EVISORange == 0) || (AutoExposureMode == EAutoExposureMode::FullAutomatic && EVShutterRange == 0 && EVISORange == 0 && EVApertureRange > 0) )
+	{
+		if (AperturePosition > 0)
+		{
+			ApertureDecrease();
+		}
+		
+	}
+
+	if ((AutoExposureMode == EAutoExposureMode::AperturePriority && EVShutterRange > 0 && EVISORange == 0) || (AutoExposureMode == EAutoExposureMode::FullAutomatic &&  EVApertureRange == 0 && EVISORange == 0 && EVShutterRange > 0))
+	{
+		if (EVShutterPosition > 0)
+		{
+			ShutterDecrease();
+		}
+	}
+
+
 
 	if ((AutoExposureMode == EAutoExposureMode::ShutterPriority && EVApertureRange == 0 && EVISORange > 0) || (AutoExposureMode == EAutoExposureMode::AperturePriority && EVShutterRange == 0 && EVISORange > 0) || (AutoExposureMode == EAutoExposureMode::FullAutomatic && EVShutterRange == 0 && EVApertureRange == 0 && EVISORange > 0))
 	{
@@ -636,6 +687,43 @@ void ARealCameraActor::StopDown(int& ISOPosition, int& EVShutterPosition, int& A
 				ApertureIncrease();
 		}
 	}
+
+	if ((AutoExposureMode == EAutoExposureMode::FullAutomatic && EVShutterRange > 0 && EVApertureRange > 0 && EVISORange == 0))
+	{
+		if (EVShutterPosition < EVShutterRange || AperturePosition < EVApertureRange)
+		{
+			if (UKismetMathLibrary::SafeDivide(1.0f, (EVShutterRange)) * EVShutterPosition <= UKismetMathLibrary::SafeDivide(1.0f, (EVApertureRange)) * AperturePosition)
+			{
+				ShutterIncrease();
+			}
+			else
+			{
+				ApertureIncrease();
+			}
+		}
+	}
+
+	if ((AutoExposureMode == EAutoExposureMode::ShutterPriority && EVApertureRange > 0 && EVISORange == 0) || (AutoExposureMode == EAutoExposureMode::FullAutomatic && EVShutterRange == 0 && EVISORange == 0 && EVApertureRange > 0))
+	{
+
+		if (AperturePosition < EVApertureRange)
+		{
+			ApertureIncrease();
+		}
+		
+	}
+
+	if ((AutoExposureMode == EAutoExposureMode::AperturePriority && EVShutterRange > 0 && EVISORange == 0) || (AutoExposureMode == EAutoExposureMode::FullAutomatic && EVApertureRange == 0 && EVISORange == 0 && EVShutterRange > 0))
+	{
+		if (EVShutterPosition < EVShutterRange)
+		{
+			ShutterIncrease();
+		}
+	}
+
+
+
+
 	if ((AutoExposureMode == EAutoExposureMode::ShutterPriority && EVApertureRange == 0 && EVISORange > 0) || (AutoExposureMode == EAutoExposureMode::AperturePriority && EVShutterRange == 0 && EVISORange > 0) || (AutoExposureMode == EAutoExposureMode::FullAutomatic && EVShutterRange == 0 && EVApertureRange == 0 && EVISORange > 0))
 	{
 		if (ISOPosition < EVISORange)
@@ -742,7 +830,7 @@ void ARealCameraActor::ApertureDecrease() {
 	UpdateAperture();
 }
 
-//Var update
+
 #if WITH_EDITOR
 void ARealCameraActor::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
@@ -828,7 +916,6 @@ void ARealCameraActor::SetActiveLens()
 void ARealCameraActor::RealLensUpdate()
 {
 	if (bRealCameraInitialized) {
-
 		if (RealCameraComponent && ActiveLens) {
 			ActiveRealCameraLensName = ActiveLens->LenseName;
 			if (ActiveLens->b_isPrimeLens)
@@ -841,6 +928,7 @@ void ARealCameraActor::RealLensUpdate()
 				ActiveFocalLength = ActiveLens->FocalLength;
 				bIsPrimeLens = false;
 			}
+			UpdateLensFile();
 			UpdateFocalLength();
 			//UpdateAperture();
 			UpdateApertureRange();
@@ -1009,7 +1097,7 @@ void ARealCameraActor::UpdateFocalLength()
 {
 	if (ActiveLens && RealCameraComponent)
 	{
-		if (ActiveLens->b_isPrimeLens)
+		if (ActiveLens->b_isPrimeLens && !FilmMaterial)
 		{
 			ActiveFocalLength = ActiveLens->FocalLength;
 		}
@@ -1048,7 +1136,17 @@ void ARealCameraActor::UpdateFocalLength()
 void ARealCameraActor::UpdateISO()
 {
 	if (RealCameraComponent)
-	{
+	{	
+
+		if (FilmMaterial) {
+			
+			bISOGrainEnabled = false;
+			RealCameraComponent->PostProcessSettings.WeightedBlendables.Array[0].Weight = 0.0f;
+		}
+		else if (!FilmMaterial) {
+			RealCameraComponent->PostProcessSettings.WeightedBlendables.Array[0].Weight = 1.0f;
+		}
+
 		if (AutoExposureMode == EAutoExposureMode::Off) {
 			CurrentISO = FMath::Clamp(CurrentISO, CurrentISORange.X, CurrentISORange.Y);
 			RealCameraComponent->PostProcessSettings.CameraISO = CurrentISO;
@@ -1060,7 +1158,6 @@ void ARealCameraActor::UpdateISO()
 		if (bISOGrainEnabled && ActiveLens && ActiveBody)
 		{
 			float Grain = ((1.f / 51200 * (CurrentISO * (CurrentCropFactor * CurrentCropFactor))) * ISO_Max) * CurrentISOMultiplier;
-
 			if (bISOGrainEnabled)
 				ISO_Max = 0.55f;
 			else ISO_Max = 0.0f;
@@ -1078,14 +1175,16 @@ void ARealCameraActor::UpdateISO()
 		}
 		else
 		{
-			if (GrainMaterial && !GrainDynMaterial)
-			{
-				GrainDynMaterial = UMaterialInstanceDynamic::Create(GrainMaterial, this);
-			}
-			if (GrainMaterial && GrainDynMaterial) {
-				GrainDynMaterial->SetScalarParameterValue("RealCamera_FilmGrain_Blend", .0f);
-				RealCameraComponent->PostProcessSettings.WeightedBlendables.Array[0].Object = GrainDynMaterial;
-				RealCameraComponent->PostProcessSettings.WeightedBlendables.Array[0].Weight = 1.0f;
+			if (!FilmMaterial) {
+				if (GrainMaterial && !GrainDynMaterial)
+				{
+					GrainDynMaterial = UMaterialInstanceDynamic::Create(GrainMaterial, this);
+				}
+				if (GrainMaterial && GrainDynMaterial) {
+					GrainDynMaterial->SetScalarParameterValue("RealCamera_FilmGrain_Blend", .0f);
+					RealCameraComponent->PostProcessSettings.WeightedBlendables.Array[0].Object = GrainDynMaterial;
+					RealCameraComponent->PostProcessSettings.WeightedBlendables.Array[0].Weight = 1.0f;
+				}
 			}
 		}
 	}
@@ -1121,6 +1220,10 @@ void ARealCameraActor::UpdateSimulatedDynamicRange()
 {
 	if (ActiveBody && RealCameraComponent)
 	{
+		if (FilmMaterial)
+		{
+			bSimulatedDynamicRangeEnabled = false;
+		}
 		if (bSimulatedDynamicRangeEnabled)
 		{
 			float DynamicRangePercent = (100 - ((ActiveBody->DynamicRange - 8.5) * 2.33))/100;
@@ -1150,7 +1253,37 @@ void ARealCameraActor::UpdateAspectRatio()
 	UpdateAspectRatioRenderTexture();
 
 	if (RealCameraComponent && ActiveBody){
-		if (bCustomAspectRatio){
+		if (FilmDynMaterial && FilmMaterial) {
+			float CustomAspectRatioFilmX = FilmDynMaterial->K2_GetScalarParameterValue(FName("AspectRatioX"));
+			float CustomAspectRatioFilmY = FilmDynMaterial->K2_GetScalarParameterValue(FName("AspectRatioY"));
+
+			if (!bCustomAspectRatio) {
+				if ((FilmDynMaterial->K2_GetScalarParameterValue(FName("Film width in mm")) / FilmDynMaterial->K2_GetScalarParameterValue(FName("Film height in mm"))) < (CustomAspectRatioFilmX / CustomAspectRatioFilmY))
+				{
+					RealCameraComponent->Filmback.SensorWidth = FilmDynMaterial->K2_GetScalarParameterValue(FName("Film width in mm")); 
+					RealCameraComponent->Filmback.SensorHeight = FilmDynMaterial->K2_GetScalarParameterValue(FName("Film width in mm")) / (CustomAspectRatioFilmX / CustomAspectRatioFilmY);
+				}
+				else
+				{
+					RealCameraComponent->Filmback.SensorWidth = FilmDynMaterial->K2_GetScalarParameterValue(FName("Film height in mm")) * (CustomAspectRatioFilmX / CustomAspectRatioFilmY);
+					RealCameraComponent->Filmback.SensorHeight = FilmDynMaterial->K2_GetScalarParameterValue(FName("Film height in mm"));
+				}
+			}
+			if (bCustomAspectRatio) {
+				if ((FilmDynMaterial->K2_GetScalarParameterValue(FName("Film width in mm")) / FilmDynMaterial->K2_GetScalarParameterValue(FName("Film height in mm"))) < (CustomAspectRatio.X / CustomAspectRatio.Y))
+				{
+					RealCameraComponent->Filmback.SensorHeight = FilmDynMaterial->K2_GetScalarParameterValue(FName("Film width in mm")) / (CustomAspectRatio.X / CustomAspectRatio.Y);
+					RealCameraComponent->Filmback.SensorWidth = FilmDynMaterial->K2_GetScalarParameterValue(FName("Film width in mm"));
+				}
+				else
+				{
+					RealCameraComponent->Filmback.SensorWidth = FilmDynMaterial->K2_GetScalarParameterValue(FName("Film height in mm")) * (CustomAspectRatio.X / CustomAspectRatio.Y);
+					RealCameraComponent->Filmback.SensorHeight = FilmDynMaterial->K2_GetScalarParameterValue(FName("Film height in mm"));
+				}
+			}
+		}
+		else if (bCustomAspectRatio){
+	
 			if ((ActiveBody->SensorSize.X / ActiveBody->SensorSize.Y) < (CustomAspectRatio.X / CustomAspectRatio.Y))
 			{
 				RealCameraComponent->Filmback.SensorHeight = ActiveBody->SensorSize.X / ( CustomAspectRatio.X / CustomAspectRatio.Y);
@@ -1172,7 +1305,7 @@ void ARealCameraActor::UpdateAspectRatio()
 
 void ARealCameraActor::UpdateAspectRatioRenderTexture()
 {
-	if (AverageSceneLuminanceRenderTarget && ActiveBody) {
+	if (AverageSceneLuminanceRenderTarget && ActiveBody && CustomAspectRatio.X > 0.0f && CustomAspectRatio.Y > 0.0f) {
 		if (bCustomAspectRatio) {
 			if ((CustomAspectRatio.X > CustomAspectRatio.Y)) {
 
@@ -1216,8 +1349,8 @@ void ARealCameraActor::UpdateBarrelDistortion()
 			DistortionDynMaterial->SetScalarParameterValue("RealCamera_PurpleFringe_Intensity", CurrentPurpleFringing);
 			RealCameraComponent->PostProcessSettings.WeightedBlendables.Array[1].Object = DistortionDynMaterial;
 
-			if (bBarrelDistortionEnabled)
-			{
+			if (bBarrelDistortionEnabled && !ActiveLens->b_useLensFile)
+			{	
 				RealCameraComponent->PostProcessSettings.WeightedBlendables.Array[1].Weight = 1.f;
 			}
 			else 
@@ -1320,14 +1453,28 @@ void ARealCameraActor::UpdateISORange()
 {
 	if (ActiveBody && RealCameraComponent)
 	{
-		CurrentISORange = ActiveBody->ISORange;
-		if (CurrentISORange.Y > ISOs[0]){
+		if (FilmDynMaterial && FilmMaterial) {
+			if (!FilmDynMaterial->K2_GetScalarParameterValue(FName("EI/ISO"))) {
+				
+			}
+			else if (FilmMaterial && FilmDynMaterial->K2_GetScalarParameterValue(FName("EI/ISO"))) {
+				int CustomISO = FilmDynMaterial->K2_GetScalarParameterValue(FName("EI/ISO"));
+				CurrentISORange.X = CustomISO;
+				CurrentISORange.Y = CustomISO;
+			}
+		}
+		else {
+			CurrentISORange = ActiveBody->ISORange;
+		}
+
+		if (CurrentISORange.Y > ISOs[0]) {
 			CurrentISORange.Y = ISOs[0];
 		}
-		if (CurrentISORange.X < ISOs[ISOs.Num()-1]) {
+		if (CurrentISORange.X < ISOs[ISOs.Num() - 1]) {
 			CurrentISORange.X = ISOs[ISOs.Num() - 1];
 		}
 		CurrentISOMultiplier = ActiveBody->ISOMultiplier;
+		UpdateISO();
 	}
 }
 
@@ -1335,23 +1482,31 @@ void ARealCameraActor::UpdateSensorSize()
 {
 	if (ActiveBody && RealCameraComponent)
 	{
+		if (FilmMaterial && FilmDynMaterial) {
+			ActiveBody->SensorArea = FilmDynMaterial->K2_GetScalarParameterValue(FName("Film width in mm")) * FilmDynMaterial->K2_GetScalarParameterValue(FName("Film height in mm"));
+			
+			RealCameraComponent->Filmback.SensorWidth = FilmDynMaterial->K2_GetScalarParameterValue(FName("Film width in mm"));
+			RealCameraComponent->Filmback.SensorHeight = FilmDynMaterial->K2_GetScalarParameterValue(FName("Film height in mm"));
+			CurrentCropFactor = 43.27f / sqrt((FilmDynMaterial->K2_GetScalarParameterValue(FName("Film width in mm")) * FilmDynMaterial->K2_GetScalarParameterValue(FName("Film width in mm"))) + (FilmDynMaterial->K2_GetScalarParameterValue(FName("Film height in mm")) * FilmDynMaterial->K2_GetScalarParameterValue(FName("Film height in mm"))));
+		}
+		else{
 		ActiveBody->SensorArea = ActiveBody->SensorSize.X * ActiveBody->SensorSize.Y;
+		RealCameraComponent->Filmback.SensorWidth = ActiveBody->SensorSize.X;
+		RealCameraComponent->Filmback.SensorHeight = ActiveBody->SensorSize.Y;
+		CurrentCropFactor = 43.27f / sqrt((ActiveBody->SensorSize.X * ActiveBody->SensorSize.X) + (ActiveBody->SensorSize.Y * ActiveBody->SensorSize.Y));
+		
+		}
 		ActiveBody->PixelAmount = ActiveBody->SensorPixelResolution.X * ActiveBody->SensorPixelResolution.Y;
 		ActiveBody->PixelSize = ActiveBody->SensorArea / ActiveBody->PixelAmount;
 		CurrentPixelSize = ActiveBody->PixelSize;
-		CurrentCropFactor = 43.27f / sqrt((ActiveBody->SensorSize.X * ActiveBody->SensorSize.X) + (ActiveBody->SensorSize.Y * ActiveBody->SensorSize.Y));
-		RealCameraComponent->Filmback.SensorWidth = ActiveBody->SensorSize.X;
-		RealCameraComponent->Filmback.SensorHeight = ActiveBody->SensorSize.Y;
+		
 	}
 }
 
 void ARealCameraActor::SetActiveFocalLength(float value)
 {
-
 	ActiveFocalLength = value;
-	//UE_LOG(LogExec, Warning, TEXT("UpdateFocalLength();"));
 	UpdateFocalLength();
-
 }
 
 void ARealCameraActor::SetCurrentAperture(float value)
@@ -1378,12 +1533,51 @@ void ARealCameraActor::SetCustomAspectRatio(FVector2D value)
 	UpdateAspectRatio();
 }
 
+void ARealCameraActor::UpdateLensFile() 
+{
+	if (ActiveLens->b_useLensFile)
+	{
+		bCurrentLensFileInUse = true;
+		RealLensComponent->SetLensFile(ActiveLens->RealLensFile);
+		RealLensComponent->SetFIZEvaluationMode(EFIZEvaluationMode::UseCameraSettings);
+		RealLensComponent->SetApplyDistortion(true);
+	}
+	else
+	{
+		bCurrentLensFileInUse = false;
+		RealLensComponent->SetLensFile(nullptr);
+		RealLensComponent->SetApplyDistortion(false);
+	}
+}
 
 void ARealCameraActor::UpdateLookatTrackingSettings()
 {
 	LookatTrackingSettings = RealCameraLookatTrackingSettings;
 }
 
+void ARealCameraActor::UpdateFilm()
+{
+	if (FilmMaterial && !FilmDynMaterial)
+	{
+		FilmDynMaterial = UMaterialInstanceDynamic::Create(FilmMaterial, this);
+		RealCameraComponent->PostProcessSettings.AddBlendable(FilmMaterial, 1.0f);
+	}
+	if (FilmMaterial && FilmDynMaterial) 
+	{
+		FilmDynMaterial = UMaterialInstanceDynamic::Create(FilmMaterial, this);
+		RealCameraComponent->PostProcessSettings.WeightedBlendables.Array[3].Object = FilmDynMaterial;
+		RealCameraComponent->PostProcessSettings.WeightedBlendables.Array[3].Weight = 1.0f;
+		GrainDynMaterial->SetScalarParameterValue("RealCamera_FilmGrain_Blend", .0f);
+	}
+	else if (!FilmMaterial) 
+	{
+		bSimulatedDynamicRangeEnabled = true;
+		bISOGrainEnabled = true;
+		RealCameraComponent->PostProcessSettings.WeightedBlendables.Array[3].Weight = 0.0f;
+		RealBodyUpdate();
+	}
+	RealBodyUpdate();
+}
 
 #if WITH_EDITOR
 bool ARealCameraActor::CanEditChange(const FProperty* InProperty) const
@@ -1394,7 +1588,6 @@ bool ARealCameraActor::CanEditChange(const FProperty* InProperty) const
 		if (ActiveBody && ActiveBody->BuiltInLens)
 		{
 			return false;
-
 		}
 		return (ParentVal);
 	}
@@ -1404,7 +1597,7 @@ bool ARealCameraActor::CanEditChange(const FProperty* InProperty) const
 	}
 	if (InProperty->GetFName() == GET_MEMBER_NAME_CHECKED(ARealCameraActor, CurrentISO))
 	{
-		return ParentVal && AutoExposureMode == EAutoExposureMode::Off;
+		return ParentVal && AutoExposureMode == EAutoExposureMode::Off && !FilmMaterial;
 	}
 	if (InProperty->GetFName() == GET_MEMBER_NAME_CHECKED(ARealCameraActor, RealCameraShutterSettings.CameraMode))
 	{
@@ -1425,6 +1618,10 @@ bool ARealCameraActor::CanEditChange(const FProperty* InProperty) const
 	if (InProperty->GetFName() == GET_MEMBER_NAME_CHECKED(ARealCameraActor, ActiveFocalLength))
 	{
 		return ParentVal && !bIsPrimeLens;
+	}
+	if (InProperty->GetFName() == GET_MEMBER_NAME_CHECKED(ARealCameraActor, bBarrelDistortionEnabled))
+	{
+		return ParentVal && !bCurrentLensFileInUse;
 	}
 	return ParentVal;
 }

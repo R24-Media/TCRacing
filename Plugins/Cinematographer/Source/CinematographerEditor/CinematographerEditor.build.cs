@@ -16,20 +16,16 @@ public class CinematographerEditor : ModuleRules
 			"UnrealEd",
 			"DetailCustomizations",
 			"PropertyEditor",
-			"AnimationEditor",
 			"EditorStyle",
 			"CinematicCamera",
-			"Cinematographer",
-			"InteractiveToolsFramework",
-			"EditorInteractiveToolsFramework",
-			"EditorFramework"
+			"Cinematographer"
 		});
 
 		PrivateDependencyModuleNames.AddRange(
 			new string[] {
 			"Slate",
 			"SlateCore",
-			"Projects",
+			"Projects"
 
 		});
 	}

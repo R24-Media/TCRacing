@@ -30,10 +30,12 @@ public class Cinematographer : ModuleRules
 			{
 				"Core",
 				"Renderer",
-			}
+                "CameraCalibrationCore",
+                "LensComponent"
+            }
 			);
 
-		if (Target.Type == TargetType.Editor) // Is UBT building for Editor ?
+        if (Target.Type == TargetType.Editor) // Is UBT building for Editor ?
 		{
 			PublicDependencyModuleNames.Add("UnrealEd");
 		}
@@ -46,7 +48,6 @@ public class Cinematographer : ModuleRules
 				"Slate",
 				"SlateCore",
 				"CinematicCamera",
-				"AnimationEditor"
 			}
 			);
 		
